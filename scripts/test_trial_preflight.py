@@ -1,6 +1,7 @@
 """Safety tests; no network, no model, no private source."""
 import importlib.util
 import json
+import hashlib
 import os
 from pathlib import Path
 import tempfile
@@ -69,6 +70,21 @@ class SyntheticOnlyTests(unittest.TestCase):
                     'print(1)','open("/etc/passwd")','```python\na+b\n```']:
             with self.subTest(bad=bad):
                 self.assertIsNone(trial.safe_expression(bad))
+
+    def test_verify_model_hash_includes_gguf_magic_header(self):
+        # Sparse synthetic file exercises the real 300 MB size gate without
+        # downloading or publishing any model weights.
+        with tempfile.TemporaryDirectory() as tmp:
+            model = Path(tmp) / "fake-synthetic.gguf"
+            with model.open("wb") as stream:
+                stream.write(b"GGUF")
+                stream.truncate(300_000_000)
+            with model.open("rb") as stream:
+                full_digest = hashlib.file_digest(stream, "sha256").hexdigest()
+            with patch.object(trial, "MODEL_SHA256", full_digest):
+                checked = trial.verify_model(model)
+            self.assertEqual(checked["sha256"], full_digest)
+            self.assertEqual(checked["size_bytes"], 300_000_000)
 
     def test_reject_wrong_weight_sha(self):
         with tempfile.TemporaryDirectory() as tmp:
