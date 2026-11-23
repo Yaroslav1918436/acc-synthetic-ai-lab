@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - acc-synthetic-one-shot-20261123
+      - acc-synthetic-qwen15b-20261123
     paths:
       - .acc-trial-trigger
 
@@ -17,7 +17,7 @@ concurrency:
 
 jobs:
   synthetic-model:
-    if: ${{ github.event.repository.private == false && github.repository == 'Yaroslav1918436/acc-synthetic-ai-lab' && github.ref == 'refs/heads/acc-synthetic-one-shot-20261123' }}
+    if: ${{ github.event.repository.private == false && github.repository == 'Yaroslav1918436/acc-synthetic-ai-lab' && github.ref == 'refs/heads/acc-synthetic-qwen15b-20261123' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
@@ -35,9 +35,9 @@ jobs:
         run: |
           set -Eeuo pipefail
           test "$GITHUB_REPOSITORY" = Yaroslav1918436/acc-synthetic-ai-lab
-          test "$GITHUB_REF" = refs/heads/acc-synthetic-one-shot-20261123
+          test "$GITHUB_REF" = refs/heads/acc-synthetic-qwen15b-20261123
           test "$(cat .acc-public-synthetic-only)" = ACC_PUBLIC_SYNTHETIC_ONLY_V1
-          test "$(cat .acc-trial-trigger)" = ACC_SYNTHETIC_MODEL_DIAGNOSTIC3_20261123
+          test "$(cat .acc-trial-trigger)" = ACC_SYNTHETIC_QWEN15B_TRIAL_ONCE_20261123
           for f in AGENTS.md .env private rc83; do
             if test -e "$f"; then echo "Forbidden content: $f"; exit 1; fi
           done
