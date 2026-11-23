@@ -122,7 +122,7 @@ class SyntheticOnlyTests(unittest.TestCase):
         self.assertNotIn("${{ secrets.",yaml)
         self.assertNotIn("windows-latest",yaml)
         self.assertNotIn("self-hosted",yaml)
-        self.assertIn("acc-synthetic-qwen15b-20261123",yaml)
+        self.assertIn("acc-synthetic-qwen15b-docker-20261123",yaml)
         self.assertIn("acc-trial-trigger",yaml)
 
 if __name__ == "__main__":
