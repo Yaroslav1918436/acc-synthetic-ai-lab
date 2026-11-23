@@ -9,12 +9,12 @@ import sys
 from pathlib import Path
 
 PUBLIC_REPO = "Yaroslav1918436/acc-synthetic-ai-lab"
-PUBLIC_REF = "refs/heads/acc-synthetic-qwen15b-20261123"
+PUBLIC_REF = "refs/heads/acc-synthetic-qwen15b-docker-20261123"
 MODEL_REPO = "Qwen/Qwen2.5-Coder-1.5B-Instruct-GGUF"
 MODEL_REVISION = "2ab9f8f"
 MODEL_FILE = "qwen2.5-coder-1.5b-instruct-q4_k_m.gguf"
 MODEL_SHA256 = "cc324af070c2ecbfd324a30884d2f951a7ff756aba85cb811a6ec436933bb046"
-TRIGGER = "ACC_SYNTHETIC_QWEN15B_TRIAL_ONCE_20261123\n"
+TRIGGER = "ACC_SYNTHETIC_QWEN15B_DOCKER_ONCE_20261123\n"
 CHALLENGES = [
     ("Function add(a,b) must compute the sum of its inputs. Buggy code: def add(a,b): return a-b. Reply with only the corrected return expression.", "a + b"),
     ("Function is_even(n) must return True for even integers and False for odd ones. Buggy code: def is_even(n): return n%2 != 0. Reply with only the corrected return expression.", "n % 2 == 0"),
