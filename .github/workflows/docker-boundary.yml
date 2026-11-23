@@ -1,0 +1,61 @@
+name: ACC public synthetic Docker boundary smoke
+
+on:
+  push:
+    branches:
+      - acc-synthetic-docker-boundary-20261123
+    paths:
+      - .acc-docker-boundary-trigger
+
+permissions:
+  contents: read
+
+concurrency:
+  group: acc-public-boundary-one-shot
+  cancel-in-progress: false
+
+jobs:
+  boundary-test:
+    if: ${{ github.event.repository.private == false && github.repository == 'Yaroslav1918436/acc-synthetic-ai-lab' && github.ref == 'refs/heads/acc-synthetic-docker-boundary-20261123' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      ACC_PUBLIC_REPO: ${{ github.event.repository.private == false }}
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - name: Checkout public synthetic fixture only
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Prepare Python for preflight
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Verify public synthetic one-shot authorization
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$GITHUB_REPOSITORY" = Yaroslav1918436/acc-synthetic-ai-lab
+          test "$GITHUB_REF" = refs/heads/acc-synthetic-docker-boundary-20261123
+          test "$(cat .acc-public-synthetic-only)" = ACC_PUBLIC_SYNTHETIC_ONLY_V1
+          test "$(cat .acc-docker-boundary-trigger)" = ACC_SYNTHETIC_DOCKER_BOUNDARY_ONCE_20261123
+          for f in AGENTS.md .env private rc83; do
+            test ! -e "$f"
+          done
+      - name: Verify synthetic boundary runner unit tests
+        shell: bash
+        run: |
+          python -m unittest discover -s scripts -p 'test_*.py' -q
+          python -m unittest discover -s tests -p 'test_*.py' -q
+          python -m compileall -q scripts tests
+      - name: Actual inside-container Docker boundary checks
+        shell: bash
+        run: python -m scripts.docker_boundary_probe --out acc_docker_boundary.json
+      - name: Retain boundary JSON evidence for one day
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: acc-public-docker-boundary-evidence
+          path: acc_docker_boundary.json
+          if-no-files-found: ignore
+          retention-days: 1
