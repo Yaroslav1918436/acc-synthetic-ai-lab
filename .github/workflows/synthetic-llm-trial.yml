@@ -37,7 +37,7 @@ jobs:
           test "$GITHUB_REPOSITORY" = Yaroslav1918436/acc-synthetic-ai-lab
           test "$GITHUB_REF" = refs/heads/acc-synthetic-one-shot-20261123
           test "$(cat .acc-public-synthetic-only)" = ACC_PUBLIC_SYNTHETIC_ONLY_V1
-          test "$(cat .acc-trial-trigger)" = ACC_SYNTHETIC_MODEL_TRIAL_RETRY2_20261123
+          test "$(cat .acc-trial-trigger)" = ACC_SYNTHETIC_MODEL_DIAGNOSTIC3_20261123
           for f in AGENTS.md .env private rc83; do
             if test -e "$f"; then echo "Forbidden content: $f"; exit 1; fi
           done
