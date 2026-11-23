@@ -70,6 +70,7 @@ class SyntheticOnlyTests(unittest.TestCase):
 
     def test_no_code_execution_or_imports(self):
         self.assertEqual(trial.safe_expression("a+b"),"a + b")
+        self.assertEqual(trial.safe_expression("  a+b\n"),"a + b")
         self.assertEqual(trial.safe_expression("max(lo,min(hi,n))"),"max(lo, min(hi, n))")
         for bad in ['__import__("os")','os.system("id")','[x for x in range(3)]',
                     'import os','a+b\nprint(1)','lambda x:x','a[0]','a.__class__',
@@ -84,13 +85,13 @@ class SyntheticOnlyTests(unittest.TestCase):
             model = Path(tmp) / "fake-synthetic.gguf"
             with model.open("wb") as stream:
                 stream.write(b"GGUF")
-                stream.truncate(300_000_000)
+                stream.truncate(900_000_000)
             with model.open("rb") as stream:
                 full_digest = hashlib.file_digest(stream, "sha256").hexdigest()
             with patch.object(trial, "MODEL_SHA256", full_digest):
                 checked = trial.verify_model(model)
             self.assertEqual(checked["sha256"], full_digest)
-            self.assertEqual(checked["size_bytes"], 300_000_000)
+            self.assertEqual(checked["size_bytes"], 900_000_000)
 
     def test_reject_wrong_weight_sha(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -103,7 +104,7 @@ class SyntheticOnlyTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp, patch("pathlib.Path.stat") as dummy:
             # Don't override stat globally: the public constant must remain a strict SHA.
             self.assertEqual(len(trial.MODEL_SHA256),64)
-            self.assertEqual(trial.MODEL_REVISION,"ebb2015")
+            self.assertEqual(trial.MODEL_REVISION,"2ab9f8f")
 
     def test_is_blocked_before_any_import_without_context(self):
         with tempfile.TemporaryDirectory() as tmp, patch("pathlib.Path.cwd",return_value=Path(tmp)):
@@ -121,7 +122,7 @@ class SyntheticOnlyTests(unittest.TestCase):
         self.assertNotIn("${{ secrets.",yaml)
         self.assertNotIn("windows-latest",yaml)
         self.assertNotIn("self-hosted",yaml)
-        self.assertIn("acc-synthetic-one-shot-20261123",yaml)
+        self.assertIn("acc-synthetic-qwen15b-20261123",yaml)
         self.assertIn("acc-trial-trigger",yaml)
 
 if __name__ == "__main__":
