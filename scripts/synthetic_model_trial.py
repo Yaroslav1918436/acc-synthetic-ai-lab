@@ -14,7 +14,7 @@ MODEL_REPO = "Qwen/Qwen2.5-Coder-0.5B-Instruct-GGUF"
 MODEL_REVISION = "ebb2015"
 MODEL_FILE = "qwen2.5-coder-0.5b-instruct-q4_k_m.gguf"
 MODEL_SHA256 = "1d9614638d18024d0fbb36575a15f1302a3adf044df10345688ec4f6e1c4ff32"
-TRIGGER = "ACC_SYNTHETIC_MODEL_TRIAL_RETRY2_20261123\n"
+TRIGGER = "ACC_SYNTHETIC_MODEL_DIAGNOSTIC3_20261123\n"
 CHALLENGES = [
     ("Fix only the return expression: def add(a,b): return a-b", "a + b"),
     ("Fix only the return expression: def is_even(n): return n%2 != 0", "n % 2 == 0"),
@@ -91,6 +91,13 @@ def safe_expression(raw: str) -> str | None:
                 return None
     return ast.unparse(tree.body)
 
+def synthetic_response_preview(value: object) -> str:
+    """Printable, bounded diagnostics for public, synthetic-only responses."""
+    if not isinstance(value, str):
+        return ""
+    return "".join(ch if 32 <= ord(ch) <= 126 else " " for ch in value[:240])
+
+
 def run(output: Path) -> int:
     result = {"schema_version": 1, "synthetic_only": True,
               "model_inference": "NOT_RUN", "quality": "NOT_VERIFIED",
@@ -117,7 +124,9 @@ def run(output: Path) -> int:
             raw = response["choices"][0]["message"]["content"]
             expr = safe_expression(raw)
             results.append({"accepted_expression": expr is not None,
-                            "exact_expected": expr == safe_expression(expected)})
+                            "exact_expected": expr == safe_expression(expected),
+                            "raw_preview": synthetic_response_preview(raw),
+                            "raw_length": len(raw) if isinstance(raw, str) else None})
         result.update(status="COMPLETED_SYNTHETIC_MODEL_TRIAL",
                       model_inference="PERFORMED",
                       synthetic_trials=len(results),
