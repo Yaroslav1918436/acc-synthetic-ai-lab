@@ -9,16 +9,16 @@ import sys
 from pathlib import Path
 
 PUBLIC_REPO = "Yaroslav1918436/acc-synthetic-ai-lab"
-PUBLIC_REF = "refs/heads/acc-synthetic-one-shot-20261123"
-MODEL_REPO = "Qwen/Qwen2.5-Coder-0.5B-Instruct-GGUF"
-MODEL_REVISION = "ebb2015"
-MODEL_FILE = "qwen2.5-coder-0.5b-instruct-q4_k_m.gguf"
-MODEL_SHA256 = "1d9614638d18024d0fbb36575a15f1302a3adf044df10345688ec4f6e1c4ff32"
-TRIGGER = "ACC_SYNTHETIC_MODEL_DIAGNOSTIC3_20261123\n"
+PUBLIC_REF = "refs/heads/acc-synthetic-qwen15b-20261123"
+MODEL_REPO = "Qwen/Qwen2.5-Coder-1.5B-Instruct-GGUF"
+MODEL_REVISION = "2ab9f8f"
+MODEL_FILE = "qwen2.5-coder-1.5b-instruct-q4_k_m.gguf"
+MODEL_SHA256 = "cc324af070c2ecbfd324a30884d2f951a7ff756aba85cb811a6ec436933bb046"
+TRIGGER = "ACC_SYNTHETIC_QWEN15B_TRIAL_ONCE_20261123\n"
 CHALLENGES = [
-    ("Fix only the return expression: def add(a,b): return a-b", "a + b"),
-    ("Fix only the return expression: def is_even(n): return n%2 != 0", "n % 2 == 0"),
-    ("Fix only the return expression: def clamp(n,lo,hi): return min(lo,max(hi,n))", "max(lo, min(hi, n))"),
+    ("Function add(a,b) must compute the sum of its inputs. Buggy code: def add(a,b): return a-b. Reply with only the corrected return expression.", "a + b"),
+    ("Function is_even(n) must return True for even integers and False for odd ones. Buggy code: def is_even(n): return n%2 != 0. Reply with only the corrected return expression.", "n % 2 == 0"),
+    ("Function clamp(n,lo,hi) must bound n inside the inclusive interval lo..hi (lo<=hi). Buggy code: def clamp(n,lo,hi): return min(lo,max(hi,n)). Reply with only the corrected return expression.", "max(lo, min(hi, n))"),
 ]
 
 class PilotBlocked(Exception):
@@ -48,7 +48,7 @@ def check_environment(root: Path) -> None:
 def verify_model(path: Path) -> dict:
     if not path.is_file(): raise PilotBlocked("model_not_file")
     size = path.stat().st_size
-    if not 300_000_000 <= size <= 800_000_000:
+    if not 900_000_000 <= size <= 1_400_000_000:
         raise PilotBlocked("model_size_mismatch")
     with path.open("rb") as src:
         if src.read(4) != b"GGUF":
@@ -64,9 +64,9 @@ def verify_model(path: Path) -> dict:
 def safe_expression(raw: str) -> str | None:
     if not isinstance(raw, str) or not 0 < len(raw.strip()) <= 200:
         return None
+    raw = raw.strip()
     if "```" in raw or "\x00" in raw or "\n" in raw:
         return None
-    raw = raw.strip()
     if raw.startswith("return "): raw = raw[7:].strip()
     try: tree = ast.parse(raw, mode="eval")
     except (SyntaxError, ValueError): return None
@@ -118,7 +118,7 @@ def run(output: Path) -> int:
         for prompt, expected in CHALLENGES:
             response = llm.create_chat_completion(
                 messages=[{"role": "system",
-                           "content": "Return ONLY a single Python expression. No markdown or explanations."},
+                           "content": "You repair the Python return expression in a buggy function. Reply ONLY with the expression after return, not a full function, code fence, or explanation. Example: if multiply(a,b) accidentally returns a+b, answer a*b."},
                           {"role": "user", "content": prompt}],
                 temperature=0.0, max_tokens=90, stop=["\n\n"], seed=0)
             raw = response["choices"][0]["message"]["content"]
