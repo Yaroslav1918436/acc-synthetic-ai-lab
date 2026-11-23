@@ -1,0 +1,71 @@
+name: ACC public synthetic offline-model trial
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - acc-synthetic-one-shot-20261123
+    paths:
+      - .acc-trial-trigger
+
+permissions:
+  contents: read
+
+concurrency:
+  group: acc-synthetic-model-trial-one-shot
+  cancel-in-progress: false
+
+jobs:
+  synthetic-model:
+    if: ${{ github.event.repository.private == false && github.repository == 'Yaroslav1918436/acc-synthetic-ai-lab' && github.ref == 'refs/heads/acc-synthetic-one-shot-20261123' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      HF_HUB_DISABLE_TELEMETRY: '1'
+      HF_HUB_DISABLE_IMPLICIT_TOKEN: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      ACC_PUBLIC_REPO: ${{ github.event.repository.private == false }}
+    steps:
+      - name: Checkout only public synthetic code
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify explicit synthetic-only authorization
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$GITHUB_REPOSITORY" = Yaroslav1918436/acc-synthetic-ai-lab
+          test "$GITHUB_REF" = refs/heads/acc-synthetic-one-shot-20261123
+          test "$(cat .acc-public-synthetic-only)" = ACC_PUBLIC_SYNTHETIC_ONLY_V1
+          test "$(cat .acc-trial-trigger)" = ACC_SYNTHETIC_MODEL_TRIAL_ONCE_20261123
+          for f in AGENTS.md .env private rc83; do
+            if test -e "$f"; then echo "Forbidden content: $f"; exit 1; fi
+          done
+      - name: Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Test preflight without model
+        shell: bash
+        run: |
+          python -m unittest discover -s scripts -p 'test_*.py' -q
+          python -m compileall -q scripts
+      - name: Install free offline CPU inference
+        shell: bash
+        env:
+          CMAKE_ARGS: -DGGML_CUDA=OFF -DGGML_METAL=OFF
+          FORCE_CMAKE: '1'
+        run: |
+          python -m pip install --disable-pip-version-check --no-cache-dir \
+            'huggingface_hub==1.16.1' 'llama-cpp-python==0.3.16'
+      - name: Run 3 synthetic prompts using local GGUF
+        shell: bash
+        run: python scripts/synthetic_model_trial.py --output acc_model_trial.json
+      - name: Store JSON evidence only (one day)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: acc-synthetic-model-trial-${{ github.run_number }}
+          path: acc_model_trial.json
+          if-no-files-found: ignore
+          retention-days: 1
