@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - acc-synthetic-qwen15b-20261123
+      - acc-synthetic-qwen15b-docker-20261123
     paths:
       - .acc-trial-trigger
 
@@ -17,7 +17,7 @@ concurrency:
 
 jobs:
   synthetic-model:
-    if: ${{ github.event.repository.private == false && github.repository == 'Yaroslav1918436/acc-synthetic-ai-lab' && github.ref == 'refs/heads/acc-synthetic-qwen15b-20261123' }}
+    if: ${{ github.event.repository.private == false && github.repository == 'Yaroslav1918436/acc-synthetic-ai-lab' && github.ref == 'refs/heads/acc-synthetic-qwen15b-docker-20261123' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
@@ -35,9 +35,9 @@ jobs:
         run: |
           set -Eeuo pipefail
           test "$GITHUB_REPOSITORY" = Yaroslav1918436/acc-synthetic-ai-lab
-          test "$GITHUB_REF" = refs/heads/acc-synthetic-qwen15b-20261123
+          test "$GITHUB_REF" = refs/heads/acc-synthetic-qwen15b-docker-20261123
           test "$(cat .acc-public-synthetic-only)" = ACC_PUBLIC_SYNTHETIC_ONLY_V1
-          test "$(cat .acc-trial-trigger)" = ACC_SYNTHETIC_QWEN15B_TRIAL_ONCE_20261123
+          test "$(cat .acc-trial-trigger)" = ACC_SYNTHETIC_QWEN15B_DOCKER_ONCE_20261123
           for f in AGENTS.md .env private rc83; do
             if test -e "$f"; then echo "Forbidden content: $f"; exit 1; fi
           done
@@ -49,7 +49,8 @@ jobs:
         shell: bash
         run: |
           python -m unittest discover -s scripts -p 'test_*.py' -q
-          python -m compileall -q scripts
+          python -m unittest discover -s tests -p 'test_*.py' -q
+          python -m compileall -q scripts tests
       - name: Install free offline CPU inference
         shell: bash
         env:
@@ -61,11 +62,16 @@ jobs:
       - name: Run 3 synthetic prompts using local GGUF
         shell: bash
         run: python scripts/synthetic_model_trial.py --output acc_model_trial.json
+      - name: Red/green Docker tests in offline read-only sandbox
+        shell: bash
+        run: python -m scripts.synthetic_docker_qa --input acc_model_trial.json --output acc_sandbox_qa.json
       - name: Store JSON evidence only (one day)
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: acc-synthetic-model-trial-${{ github.run_number }}
-          path: acc_model_trial.json
+          path: |
+            acc_model_trial.json
+            acc_sandbox_qa.json
           if-no-files-found: ignore
           retention-days: 1
