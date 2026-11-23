@@ -14,7 +14,7 @@ MODEL_REPO = "Qwen/Qwen2.5-Coder-0.5B-Instruct-GGUF"
 MODEL_REVISION = "ebb2015"
 MODEL_FILE = "qwen2.5-coder-0.5b-instruct-q4_k_m.gguf"
 MODEL_SHA256 = "1d9614638d18024d0fbb36575a15f1302a3adf044df10345688ec4f6e1c4ff32"
-TRIGGER = "ACC_SYNTHETIC_MODEL_TRIAL_ONCE_20261123\n"
+TRIGGER = "ACC_SYNTHETIC_MODEL_TRIAL_RETRY2_20261123\n"
 CHALLENGES = [
     ("Fix only the return expression: def add(a,b): return a-b", "a + b"),
     ("Fix only the return expression: def is_even(n): return n%2 != 0", "n % 2 == 0"),
