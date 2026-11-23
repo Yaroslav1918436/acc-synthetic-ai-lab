@@ -53,6 +53,7 @@ def verify_model(path: Path) -> dict:
     with path.open("rb") as src:
         if src.read(4) != b"GGUF":
             raise PilotBlocked("model_format_mismatch")
+        src.seek(0)  # Hash the entire GGUF, including the 4-byte magic header.
         digest = hashlib.sha256()
         while data := src.read(1024 * 1024):
             digest.update(data)
