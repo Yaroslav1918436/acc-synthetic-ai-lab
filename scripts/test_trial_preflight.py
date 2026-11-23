@@ -62,6 +62,12 @@ class SyntheticOnlyTests(unittest.TestCase):
                 with self.assertRaisesRegex(trial.PilotBlocked,"private_data_marker_present"):
                     trial.check_environment(root)
 
+    def test_diagnostic_preview_is_bounded_and_ascii_only(self):
+        self.assertEqual(trial.synthetic_response_preview("a+b\n\x00"), "a+b  ")
+        self.assertEqual(trial.synthetic_response_preview("x"*300), "x"*240)
+        self.assertEqual(trial.synthetic_response_preview(None), "")
+        self.assertEqual(trial.synthetic_response_preview("q\u2603"), "q ")
+
     def test_no_code_execution_or_imports(self):
         self.assertEqual(trial.safe_expression("a+b"),"a + b")
         self.assertEqual(trial.safe_expression("max(lo,min(hi,n))"),"max(lo, min(hi, n))")
