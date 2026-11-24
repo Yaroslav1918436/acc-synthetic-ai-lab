@@ -1,0 +1,114 @@
+name: ACC public synthetic v082 one-intent public job
+run-name: ACC-SYNTH-${{ inputs.intent_id }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      intent_id:
+        description: 'Opaque synthetic dispatch id: lab-intent + 16 lowercase hex'
+        required: true
+        type: string
+      task_id:
+        description: 'Only lab-artifact-001 (no private tasks)'
+        required: true
+        type: string
+      source_sha256:
+        description: 'Exact SHA-256 of the fixed artificial fixture'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: acc-public-synth-v082-${{ inputs.intent_id }}
+  cancel-in-progress: false
+
+jobs:
+  synthetic:
+    if: github.repository == 'Yaroslav1918436/acc-synthetic-ai-lab'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Execute pinned artificial fixture without external actions
+        shell: bash
+        env:
+          ACC_INTENT_ID: ${{ inputs.intent_id }}
+          ACC_TASK_ID: ${{ inputs.task_id }}
+          ACC_INPUT_SHA256: ${{ inputs.source_sha256 }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib
+          import json
+          import os
+          import re
+          import sys
+          import tempfile
+          from pathlib import Path
+
+          TASK = 'lab-artifact-001'
+          REPO = 'Yaroslav1918436/acc-synthetic-ai-lab'
+          intent = os.getenv('ACC_INTENT_ID','')
+          if not re.fullmatch(r'lab-intent-[0-9a-f]{16}', intent):
+              print('ACC_PUBLIC_V082_BLOCKED=INTENT_ID_INVALID')
+              sys.exit(2)
+          BEFORE = b'export function syntheticAnswer() { return 1; }\n'
+          AFTER = b'export function syntheticAnswer() { return 2; }\n'
+          INPUT_SHA = '1ef077c75ce964432b4031dc96ce20ffcf523c51447254e7a1d4ac3a6274da21'
+          OUTPUT_SHA = '5ec53e7bccffb2017b87937d28e921d07d6957c5b1d6e5bcde061bfb35c35226'
+          sha = lambda data: hashlib.sha256(data).hexdigest()
+          if (os.getenv('ACC_TASK_ID') != TASK or os.getenv('ACC_INPUT_SHA256') != INPUT_SHA
+                  or os.getenv('GITHUB_REPOSITORY') != REPO
+                  or not re.fullmatch(r'[0-9]+', os.getenv('GITHUB_RUN_ID', ''))
+                  or not re.fullmatch(r'[0-9a-f]{40}', os.getenv('GITHUB_SHA', ''))):
+              print('ACC_PUBLIC_SYNTHETIC_BLOCKED=IDENTITY_MISMATCH')
+              sys.exit(2)
+          if sha(BEFORE) != INPUT_SHA or sha(AFTER) != OUTPUT_SHA:
+              print('ACC_PUBLIC_SYNTHETIC_BLOCKED=FIXTURE_HASH_MISMATCH')
+              sys.exit(2)
+          scratch = os.environ.get('RUNNER_TEMP')
+          if not scratch or not Path(scratch).is_dir():
+              print('ACC_PUBLIC_SYNTHETIC_BLOCKED=RUNNER_TEMP_UNAVAILABLE')
+              sys.exit(2)
+          with tempfile.TemporaryDirectory(prefix='acc-v075-', dir=scratch) as temp:
+              original = Path(temp) / 'source.js'
+              candidate = Path(temp) / 'candidate.js'
+              original.write_bytes(BEFORE)
+              source_before = original.read_bytes()
+              transformed = source_before.replace(b'return 1;', b'return 2;')
+              if transformed != AFTER or source_before != BEFORE:
+                  print('ACC_PUBLIC_SYNTHETIC_BLOCKED=FIXTURE_NOT_EXACT')
+                  sys.exit(2)
+              with candidate.open('xb') as output:
+                  output.write(transformed)
+                  output.flush()
+                  os.fsync(output.fileno())
+              if original.read_bytes() != BEFORE or candidate.read_bytes() != AFTER:
+                  print('ACC_PUBLIC_SYNTHETIC_BLOCKED=SOURCE_OR_CANDIDATE_CHANGED')
+                  sys.exit(2)
+              receipt = {
+                  'schema': 'acc-public-v082',
+                  'intent_id': intent,
+                  'task_id': TASK,
+                  'run_id': os.environ['GITHUB_RUN_ID'],
+                  'run_commit': os.environ['GITHUB_SHA'],
+                  'source_sha256': INPUT_SHA,
+                  'candidate_sha256': OUTPUT_SHA,
+                  'result': 'SYNTHETIC_NEEDS_REVIEW',
+                  'private_code_used': False,
+                  'private_rc83_executed': False,
+                  'sandbox_namespace_proven': False,
+                  'ai_model_run': False,
+              }
+              canonical = json.dumps(receipt, sort_keys=True, separators=(',', ':'))
+              receipt_hash = sha(canonical.encode('utf-8'))
+              print('ACC_PUBLIC_V082_RECEIPT=' + canonical)
+              print('ACC_PUBLIC_V082_RECEIPT_SHA256=' + receipt_hash.upper())
+              print('ACC_PUBLIC_V082_NEEDS_REVIEW')
+              summary_file = os.getenv('GITHUB_STEP_SUMMARY')
+              if summary_file:
+                  with open(summary_file, 'a', encoding='utf-8') as summary:
+                      summary.write('ACC public v082 synthetic-only result: NEEDS_REVIEW\n')
+                      summary.write('Receipt SHA-256: ' + receipt_hash.upper() + '\n')
+          PY
